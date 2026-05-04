@@ -22,22 +22,13 @@
       : `${m}:${String(s).padStart(2, '0')}`;
   }
 
-  function showToast(msg, color) {
-    const existing = document.getElementById('yt-memo-toast');
-    if (existing) existing.remove();
-    const el = document.createElement('div');
-    el.id = 'yt-memo-toast';
-    el.textContent = msg;
-    el.style.cssText = [
-      'position:fixed', 'top:20px', 'right:20px',
-      `background:${color || '#4CAF50'}`, 'color:#fff',
-      'padding:12px 16px', 'border-radius:4px',
-      'z-index:10000', 'font-family:Arial,sans-serif',
-      'font-size:14px', 'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
-      'transition:opacity 0.3s',
-    ].join(';');
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+  function showToast(msg, color = '#6366f1') {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${color};color:#fff;padding:12px 24px;border-radius:8px;z-index:2147483647;font-family:system-ui;font-size:14px;box-shadow:0 10px 25px rgba(0,0,0,0.2);opacity:0;transition:0.3s;`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.style.opacity = '1', 10);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
   }
 
   async function copyToClipboard(text) {
