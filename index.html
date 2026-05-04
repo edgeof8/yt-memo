@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yt-memo — YouTube video to Markdown</title>
+  <meta name="description" content="One bookmarklet. Extracts YouTube video metadata, chapters, and transcript to clean Markdown with YAML frontmatter.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3rem;
+      padding: 4rem 2rem 5rem;
+      text-align: center;
+    }
+
+    /* ── Hero ──────────────────────────────────────────────── */
+
+    .hero { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+
+    .brand {
+      font-size: 4rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: #f85149;
+      text-shadow: 0 0 60px rgba(248, 81, 73, 0.35);
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #e6edf3;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .sub-tagline { color: #6e7681; font-size: 0.92rem; }
+
+    /* ── What you get ──────────────────────────────────────── */
+
+    .features {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .feature-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.8rem;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid rgba(248,81,73,0.5);
+      background: rgba(248,81,73,0.08);
+      color: #f85149;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Output preview ────────────────────────────────────── */
+
+    .preview-section {
+      width: 100%;
+      max-width: 560px;
+      text-align: left;
+    }
+
+    .preview-eyebrow {
+      text-align: center;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #484f58;
+      margin-bottom: 1.25rem;
+    }
+
+    .preview {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.5rem 0.85rem;
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    .preview-body {
+      padding: 1rem 1.1rem;
+      font-family: "SF Mono", "Cascadia Code", "Fira Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.75;
+      color: #8b949e;
+    }
+
+    .preview-body .fm  { color: #6e7681; }
+    .preview-body .key { color: #79c0ff; }
+    .preview-body .val { color: #a5d6ff; }
+    .preview-body .h1  { color: #e6edf3; font-weight: 700; }
+    .preview-body .h2  { color: #cdd9e5; }
+    .preview-body .ts  { color: #3fb950; }
+
+    /* ── Install ───────────────────────────────────────────── */
+
+    .install {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6e7681;
+    }
+
+    .bookmarklet {
+      display: inline-block;
+      padding: 0.85rem 2.25rem;
+      background: #da3633;
+      color: #ffffff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      border: 1px solid #f85149;
+      cursor: grab;
+      user-select: none;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+
+    .bookmarklet:hover {
+      background: #f85149;
+      box-shadow: 0 0 28px rgba(248, 81, 73, 0.4);
+    }
+
+    .bookmarklet:active { cursor: grabbing; transform: scale(0.97); }
+
+    .drag-hint { font-size: 0.78rem; color: #484f58; margin-top: -0.25rem; }
+
+    .arrow {
+      font-size: 1.4rem;
+      animation: bounce 1.4s ease-in-out infinite;
+      color: #484f58;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+
+    .bookmarks-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 0.45rem 1rem;
+      font-size: 0.82rem;
+      color: #484f58;
+    }
+
+    .bookmarks-bar .slot {
+      color: #e6edf3;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── Divider / copy fallback ───────────────────────────── */
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      max-width: 320px;
+      color: #484f58;
+      font-size: 0.78rem;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-top: 1px solid #21262d;
+    }
+
+    .copy-btn {
+      padding: 0.55rem 1.25rem;
+      background: transparent;
+      color: #8b949e;
+      font-size: 0.88rem;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover { color: #e6edf3; border-color: #8b949e; }
+    .copy-btn.copied { color: #3fb950; border-color: #3fb950; }
+
+    /* ── Note ──────────────────────────────────────────────── */
+
+    .note {
+      max-width: 420px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.82rem;
+      color: #6e7681;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ────────────────────────────────────────────── */
+
+    .footer { font-size: 0.82rem; color: #484f58; }
+    .footer a { color: #58a6ff; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="brand">yt-memo</div>
+    <p class="tagline">Copy a YouTube video — metadata, chapters, and transcript — to your clipboard as Markdown.</p>
+    <p class="sub-tagline">One click on any /watch page.</p>
+  </div>
+
+  <!-- Feature badges -->
+  <div class="features">
+    <span class="feature-badge">Metadata</span>
+    <span class="feature-badge">Chapters</span>
+    <span class="feature-badge">Transcript</span>
+    <span class="feature-badge">YAML Frontmatter</span>
+  </div>
+
+  <!-- Output preview -->
+  <div class="preview-section">
+    <div class="preview-eyebrow">Example output</div>
+    <div class="preview">
+      <div class="preview-bar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+      </div>
+      <div class="preview-body">
+        <span class="fm">---</span><br>
+        <span class="key">title:</span> <span class="val">"How the Internet Works"</span><br>
+        <span class="key">channel:</span> <span class="val">"Fireship"</span><br>
+        <span class="key">source:</span> <span class="val">"https://youtube.com/watch?v=…"</span><br>
+        <span class="key">clipped:</span> <span class="val">"2025-05-04"</span><br>
+        <span class="key">duration:</span> <span class="val">"12:34"</span><br>
+        <span class="fm">---</span><br>
+        <br>
+        <span class="h1"># How the Internet Works</span><br>
+        <br>
+        **Channel:** [Fireship](https://youtube.com/@fireship)<br>
+        **Duration:** 12:34<br>
+        <br>
+        <span class="h2">## Chapters</span><br>
+        <br>
+        - [0:00] Introduction<br>
+        - [1:42] TCP/IP<br>
+        - [4:15] DNS<br>
+        <br>
+        <span class="h2">## Transcript</span><br>
+        <br>
+        <span class="ts">[0:00]</span> Welcome back. Today we're diving into…<br>
+        <span class="ts">[0:14]</span> Every time you visit a website…
+      </div>
+    </div>
+  </div>
+
+  <!-- Install -->
+  <div class="install">
+    <div class="label">drag this to your bookmarks bar</div>
+    <a id="yt-memo-link" class="bookmarklet" href="#">yt-memo</a>
+    <div class="arrow">&#8595;</div>
+    <div class="bookmarks-bar">
+      &#128278; Bookmarks &nbsp;&nbsp; <span class="slot">yt-memo</span> &nbsp;&nbsp; &#183;&#183;&#183;
+    </div>
+    <div class="drag-hint">then open any YouTube video page and click it</div>
+  </div>
+
+  <div class="divider">can't drag?</div>
+
+  <button class="copy-btn" id="copy-btn">Copy code — paste as bookmark URL</button>
+
+  <div class="note">
+    Works on any YouTube <code>/watch</code> page. Prefers the auto-generated caption track; falls back to opening the transcript panel if needed. Chapters are extracted from the chapter panel or parsed from the description timestamps.
+  </div>
+
+  <p class="footer">
+    <a href="https://github.com/edgeof8">github.com/edgeof8</a>
+  </p>
+
+  <!-- bookmarklet source — single source of truth for both drag target and copy button -->
+  <script id="yt-memo-code" type="text/plain">javascript:!function(){"use strict";function t(t,e){return(e||document).querySelector(t)?.textContent?.trim()||""}function e(t,e){const n=document.getElementById("yt-memo-toast");n&&n.remove();const r=document.createElement("div");r.id="yt-memo-toast",r.textContent=t,r.style.cssText=["position:fixed","top:20px","right:20px",`background:${e||"#4CAF50"}`,"color:#fff","padding:12px 16px","border-radius:4px","z-index:10000","font-family:Arial,sans-serif","font-size:14px","box-shadow:0 2px 8px rgba(0,0,0,0.3)","transition:opacity 0.3s"].join(";"),document.body.appendChild(r),setTimeout(()=>r.remove(),4e3)}window.location.hostname.includes("youtube.com")&&window.location.pathname.includes("/watch")?async function(){const n=document.title;document.title="⏳ Extracting…",e("yt-memo: Extracting transcript…","#1565C0");const r=t("h1.ytd-video-primary-info-renderer")||t("h1.ytd-watch-metadata")||document.title.replace(/ - YouTube$/,"").trim()||"Unknown Title",o=function(){const t=document.querySelector("a.yt-simple-endpoint.ytd-channel-name")||document.querySelector("a.ytd-video-owner-renderer")||document.querySelector("ytd-channel-name a");return{name:t?.textContent?.trim()||"Unknown Channel",url:t?.href||""}}(),i=t("#info-strings yt-formatted-string")||t(".ytd-video-primary-info-renderer #info-strings yt-formatted-string")||"",a=t(".ytp-time-duration")||"",c=function(){try{const t=window.ytInitialData?.contents?.twoColumnWatchNextResults?.results?.results?.contents?.find(t=>t.videoPrimaryInfoRenderer)?.videoPrimaryInfoRenderer,e=t?.viewCount?.videoViewCountRenderer?.viewCount?.simpleText;if(e)return e}catch(t){}return t(".view-count")||t("span.view-count")||""}(),s=function(){try{const t=window.ytInitialData?.contents?.twoColumnWatchNextResults?.results?.results?.contents,e=t?.find(t=>t.videoSecondaryInfoRenderer)?.videoSecondaryInfoRenderer?.description?.runs;if(e?.length>0)return e.map(t=>{const e=t.navigationEndpoint?.urlEndpoint?.url;if(e){const n=e.startsWith("https://www.youtube.com/redirect")&&new URL(e).searchParams.get("q")||e;return`[${t.text}](${n})`}return t.text}).join("").trim()}catch(t){}const t=document.querySelector("#description-inline-expander yt-formatted-string")||document.querySelector("ytd-expander #description yt-formatted-string")||document.querySelector("#description yt-formatted-string");return t?.textContent?.trim()||""}(),u=function(e){const n=[];if(document.querySelectorAll("ytd-macro-markers-list-item-renderer").forEach(e=>{const r=t("#time",e),o=t("#title",e);r&&o&&n.push({time:r,title:o})}),n.length>0)return n;const r=/(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]?\s*(.+)/gm;let o;for(;null!==(o=r.exec(e));)n.push({time:o[1],title:o[2].trim()});return n}(s),l=await async function(){try{const t=window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;if(t?.length>0){const e=t.find(t=>t.languageCode?.startsWith("en"))||t[0],n="asr"===e.kind?"Auto-generated":e.name?.simpleText||"Manual",r=await fetch(e.baseUrl),o=await r.text(),i=(new DOMParser).parseFromString(o,"text/xml"),a=[];if(i.querySelectorAll("text").forEach(t=>{const e=parseFloat(t.getAttribute("start")||"0"),n=t.textContent.replace(/\s+/g," ").trim();n&&a.push(`[${function(t){const e=Math.floor(t/3600),n=Math.floor(t%3600/60),r=Math.floor(t%60);return e>0?`${e}:${String(n).padStart(2,"0")}:${String(r).padStart(2,"0")}`:`${n}:${String(r).padStart(2,"0")}`}(e)}] ${n}`)}),a.length>0)return{text:a.join("\n"),type:n}}}catch(t){}try{return await async function(){let e=document.querySelector('button[aria-label="Show transcript"]')||document.querySelector('button[aria-label*="transcript" i]')||document.querySelector("ytd-video-description-transcript-section-renderer button");if(!e){const t=document.querySelector('ytd-menu-renderer yt-icon-button[aria-label*="More" i]')||document.querySelector('#button-shape button[aria-label*="More" i]');t&&(t.click(),await new Promise(t=>setTimeout(t,600)),document.querySelectorAll("ytd-menu-service-item-renderer").forEach(t=>{/transcript/i.test(t.textContent)&&(e=t)}))}if(!e)return{text:"",type:"None"};e.click(),await new Promise(t=>setTimeout(t,1e3));const n=await function(t){const e=document.querySelector(t);return e?Promise.resolve(e):new Promise((e,n)=>{const r=new MutationObserver(()=>{const n=document.querySelector(t);n&&(r.disconnect(),e(n))});r.observe(document.body,{childList:!0,subtree:!0}),setTimeout(()=>{r.disconnect(),n(new Error(`${t} not found`))},4e3)})}("ytd-transcript-renderer"),r=n.querySelector("#body");r&&(r.scrollTop=r.scrollHeight,await new Promise(t=>setTimeout(t,2e3)),r.scrollTop=0,await new Promise(t=>setTimeout(t,500)));const o=[];return n.querySelectorAll("ytd-transcript-segment-renderer").forEach(e=>{const n=t(".segment-timestamp",e),r=t(".segment-text",e);r&&o.push(`[${n}] ${r}`)}),{text:o.join("\n"),type:o.length?"Auto-generated":"None"}}()}catch(t){}return{text:"",type:"None"}}(),d=function({title:t,channel:e,uploadDate:n,viewCount:r,duration:o,description:i,chapters:a,transcript:c}){const s=(new Date).toISOString().split("T")[0];return`${["---",`title: "${t.replace(/"/g,'\\"')}"`,`channel: "${e.name.replace(/"/g,'\\"')}"`,`source: "${window.location.href}"`,`clipped: "${s}"`,`duration: "${o}"`,`transcript_type: "${c.type}"`,"---"].join("\n")}\n\n${[`# ${t}`,"",`**Channel:** [${e.name}](${e.url})`,n?`**Uploaded:** ${n}`:null,r?`**Views:** ${r}`:null,o?`**Duration:** ${o}`:null,""].filter(t=>null!==t).join("\n")}\n${i?`## Description\n\n${i}\n\n`:""}${a.length?`## Chapters\n\n${a.map(t=>`- [${t.time}] ${t.title}`).join("\n")}\n\n`:""}${c.text?`## Transcript\n\n${c.text}\n\n`:""}`.trimEnd()}({title:r,channel:o,uploadDate:i,viewCount:c,duration:a,description:s,chapters:u,transcript:l});await async function(t){if(navigator.clipboard)await navigator.clipboard.writeText(t);else{const e=document.createElement("textarea");e.value=t,document.body.appendChild(e),e.select(),document.execCommand("copy"),e.remove()}}(d),document.title=n,e(`✓ Copied "${r}"${l.text?" (transcript included)":""}`),document.title="✓ Copied",setTimeout(()=>{document.title=n},1e3)}().catch(t=>{console.error("yt-memo:",t),e("yt-memo: Failed — see console for details","#c62828"),document.title=document.title.replace("⏳ Extracting…","")}):alert("yt-memo: Please run on a YouTube video page")}();</script>
+
+  <script>
+    var code = document.getElementById('yt-memo-code').textContent.trim();
+    document.getElementById('yt-memo-link').href = code;
+
+    document.getElementById('copy-btn').addEventListener('click', async function() {
+      try {
+        await navigator.clipboard.writeText(code);
+        var btn = document.getElementById('copy-btn');
+        btn.textContent = '✓ Copied';
+        btn.classList.add('copied');
+        setTimeout(function() {
+          btn.textContent = 'Copy code — paste as bookmark URL';
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch (e) {
+        alert('Copy failed — please copy the code manually from yt-memo-bookmarklet.js');
+      }
+    });
+  </script>
+
+</body>
+</html>
