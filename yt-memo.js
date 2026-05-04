@@ -13,6 +13,7 @@
   }
 
   function toTimestamp(seconds) {
+    if (isNaN(seconds) || seconds == null) return "0:00";
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
