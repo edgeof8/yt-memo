@@ -73,6 +73,11 @@
     return qsText('.ytp-time-duration') || '';
   }
 
+  function getCurrentTimestamp() {
+    const v = document.querySelector('video');
+    return v ? toTimestamp(v.currentTime) : null;
+  }
+
   function getViewCount() {
     try {
       const primary = window.ytInitialData
@@ -226,7 +231,7 @@
 
   // ── Markdown Builder ───────────────────────────────────────────────────────
 
-  function buildMarkdown({ title, channel, uploadDate, viewCount, duration, description, chapters, transcript }) {
+  function buildMarkdown({ title, channel, uploadDate, viewCount, duration, description, chapters, transcript, currentTime }) {
     const today = new Date().toISOString().split('T')[0];
 
     const frontmatter = [
@@ -244,6 +249,7 @@
       `# ${title}`,
       '',
       `**Channel:** [${channel.name}](${channel.url})`,
+      currentTime ? `**Current Timestamp:** [${currentTime}]` : null,
       uploadDate ? `**Uploaded:** ${uploadDate}` : null,
       viewCount ? `**Views:** ${viewCount}` : null,
       duration ? `**Duration:** ${duration}` : null,
@@ -270,6 +276,7 @@
 
     const title = getTitle();
     const channel = getChannel();
+    const currentTime = getCurrentTimestamp();
     const uploadDate = getUploadDate();
     const duration = getDuration();
     const viewCount = getViewCount();
@@ -277,7 +284,7 @@
     const chapters = getChapters(description);
     const transcript = await getTranscript();
 
-    const markdown = buildMarkdown({ title, channel, uploadDate, viewCount, duration, description, chapters, transcript });
+    const markdown = buildMarkdown({ title, channel, uploadDate, viewCount, duration, description, chapters, transcript, currentTime });
     await copyToClipboard(markdown);
 
     document.title = origTitle;
